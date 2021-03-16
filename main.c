@@ -269,47 +269,49 @@ unsigned char xBallCoord;
 unsigned char yBallCoord;
 char xBallDirect;
 char yBallDirect;
-unsigned char speed;
 
 enum BM_States { ball_check };
 int BallMovement(int state) {
-	static unsigned char i;
 	switch(state) {
 		case ball_check:
-			if (i >= speed) {
-				if (xBallDirect > 0) { //Shift Right
+			if (xBallCoord == 0x40) { //Begin Right Transition
+				xBallDirect = 1;
+				xBallCoord = ShiftRight(xBallCoord);
+			}/*
+			else if (xBallCoord == 0x02) { //Begin Left Transition
+				xBallDirect = -1;
+				xBallCoord = ShiftLeft(xBallCoord);
+			}*/
+			else {
+				if (xBallDirect > 0) {
 					xBallCoord = ShiftRight(xBallCoord);
 				}
-				else if (xBallDirect < 0) { // Shift Left
+				else if (xBallDirect < 0) {
 					xBallCoord = ShiftLeft(xBallCoord);
 				}
 				else {
 					//Do Nothing
 				}
-	
-				if (yBallCoord == 0xFE) { //Begin Down Transition
-					yBallDirect = -1;
-					yBallCoord = ShiftDown(yBallCoord);
-				}
-				else if (yBallCoord == 0xEF) { //Begin Up Transition
-					yBallDirect = 1;
+			}
+
+			if (yBallCoord == 0xFE) { //Begin Down Transition
+				yBallDirect = -1;
+				yBallCoord = ShiftDown(yBallCoord);
+			}
+			else if (yBallCoord == 0xEF) { //Begin Up Transition
+				yBallDirect = 1;
+				yBallCoord = ShiftUp(yBallCoord);
+			}
+			else {
+				if (yBallDirect > 0) {
 					yBallCoord = ShiftUp(yBallCoord);
 				}
-				else {
-					if (yBallDirect > 0) { //Shift Up
-						yBallCoord = ShiftUp(yBallCoord);
-					}
-					else if (yBallDirect < 0) { //Shift Up
-						yBallCoord = ShiftDown(yBallCoord);
-					}
-					else {
-						//Do Nothing
-					}
+				else if (yBallDirect < 0) {
+					yBallCoord = ShiftDown(yBallCoord);
 				}
-			}
-			i += 1;
-			if (i > 3) {
-				i = 0;
+				else {
+					//Do Nothing
+				}
 			}
 			state = ball_check;
 			break;
@@ -319,8 +321,6 @@ int BallMovement(int state) {
 			xBallDirect = 1;
 			yBallCoord = 0xFB;
 			yBallDirect = 0;
-			i = 3;
-			speed = 3;
 			break;
 	}
 	return state;
@@ -368,20 +368,15 @@ enum LPM_States { check_l_paddle };
 int LeftPaddleMovement(int state) {
         switch (state) {
                 case check_l_paddle:
-			if (aiEnable == 1) {
-				
-			}
-			else {
-	                        if ((yLeftPaddleCoord != 0xF8) && ((~PINB & 0x07) == 0x02)) {
-        	                        yLeftPaddleCoord = ShiftUp(yLeftPaddleCoord);
-                	        }
-                        	else if ((yLeftPaddleCoord != 0xE3) && ((~PINB & 0x07) == 0x01)) {
-	                                yLeftPaddleCoord = ShiftDown(yLeftPaddleCoord);
-        	                }
-                	        else {
-                        	        //Do Nothing
-	                        }
-			}
+                        if ((yLeftPaddleCoord != 0xF8) && ((~PINB & 0x07) == 0x02)) {
+                                yLeftPaddleCoord = ShiftUp(yLeftPaddleCoord);
+                        }
+                        else if ((yLeftPaddleCoord != 0xE3) && ((~PINB & 0x07) == 0x01)) {
+                                yLeftPaddleCoord = ShiftDown(yLeftPaddleCoord);
+                        }
+                        else {
+                                //Do Nothing
+                        }
                         state = check_l_paddle;
                         break;
                 default:
@@ -412,40 +407,26 @@ unsigned char winner;
 
 enum BPI_States { paddle_check };
 int BallPaddleInteraction(int state) {
-	static unsigned char yLeftPaddleCoordPrev;
-	static unsigned char yRightPaddleCoordPrev;
-	static unsigned char hasLeft;
+	unsigned char yLeftPaddleCoordPrev;
+	unsigned char yRightPaddleCoordPrev;
 	switch (state) {
 		case paddle_check:
-			//-----------
+			//----------
 			// Right
-			//-----------
-			if ((xBallCoord != 0x02) && (xBallCoord != 0x40)) {
-				hasLeft = 0;
-			}
-
-			if ((yRightPaddleCoordPrev != yRightPaddleCoord) && (xBallCoord == 0x02) && (hasLeft == 0)) {
+			// ---------
+			if ((yRightPaddleCoordPrev != yRightPaddleCoord) && (xBallCoord == 0x02)) {
 				if ((yRightPaddleCoord > yRightPaddleCoordPrev) && ((yBallDirect == 1) || (yBallDirect == 0))) {
-					if (speed > 1) {
-						speed -= 1;
-					}
+					//increase speed
 				}
 				else if ((yRightPaddleCoord > yRightPaddleCoordPrev) && (yBallDirect == -1)) {
-					if (speed < 3) {
-						speed += 1;
-					}
+					//decrease speed
 				}
 				else if ((yRightPaddleCoord < yRightPaddleCoordPrev) && ((yBallDirect == -1) || (yBallDirect == 0))) {
-					if (speed > 1) {
-						speed -= 1;
-					}
+					//increase speed
 				}
 				else { // ((yRightPaddleCoord < yRightPaddleCoordPrev) && (yBallDirect == 1))
-					if (speed < 3) {
-						speed += 1;
-					}
+					//decrease speed
 				}
-				hasLeft = 1;
 			}
 			if ((yRightPaddleCoord == 0xF8) && (xBallCoord == 0x02)) {
 				if (yBallCoord == 0xFE) {
@@ -455,10 +436,6 @@ int BallPaddleInteraction(int state) {
 				else if (yBallCoord == 0xFD) {
 					xBallDirect = -1;
 					yBallDirect = 0;
-					if ((speed < 3) && (hasLeft == 0)) {
-						speed += 1;
-						hasLeft = 1;
-					}
 				}
 				else if (yBallCoord == 0xFB) {
 					xBallDirect = -1;
@@ -466,26 +443,20 @@ int BallPaddleInteraction(int state) {
 						yBallDirect = -1;
 					}
 				}
-				else if ((yBallCoord == 0xF7) && (yBallDirect != 0)) {
+				else if (yBallCoord == 0xF7) {
 					xBallDirect = -1;
 					yBallDirect = -1;
-					if ((speed > 1) && (hasLeft == 0)) {
-						speed -= 1;
-						hasLeft = 1;
-					}
+					//increase speed
 				}
 				else {
 					winner = 2;
 				}
 			}
 			else if ((yRightPaddleCoord == 0xF1) && (xBallCoord == 0x02)) {
-				if ((yBallCoord == 0xFE) && (yBallDirect != 0)) {
+				if (yBallCoord == 0xFE) {
 					xBallDirect = -1;
 					yBallDirect = 1;
-					if ((speed > 1) && (hasLeft == 0)) {
-						speed -= 1;
-						hasLeft = 1;
-					}
+					//increase speed
 				}
 				else if (yBallCoord == 0xFD) {
 					xBallDirect = -1;
@@ -496,10 +467,6 @@ int BallPaddleInteraction(int state) {
 				else if (yBallCoord == 0xFB) {
 					xBallDirect = -1;
 					yBallDirect = 0;
-					if ((speed < 3) && (hasLeft == 0)) {
-						speed += 1;
-						hasLeft = 1;
-					}
 				}
 				else if (yBallCoord == 0xF7) {
 					xBallDirect = -1;
@@ -507,26 +474,20 @@ int BallPaddleInteraction(int state) {
 						yBallDirect = -1;
 					}
 				}
-				else if ((yBallCoord == 0xEF) && (yBallDirect != 0)) {
+				else if (yBallCoord == 0xEF) {
 					xBallDirect = -1;
 					yBallDirect = -1;
-					if ((speed > 1) && (hasLeft == 0)) {
-						speed -= 1;
-						hasLeft = 1;
-					}
+					//increase speed
 				}
 				else {
 					winner = 2;
 				}
 			}
 			else if ((yRightPaddleCoord == 0xE3) && (xBallCoord == 0x02)) {
-				if ((yBallCoord == 0xFD) && (yBallDirect != 0)) {
+				if (yBallCoord == 0xFD) {
 					xBallDirect = -1;
 					yBallDirect = 1;
-					if ((speed > 1) && (hasLeft == 0)) {
-						speed -= 1;
-						hasLeft = 1;
-					}
+					//increase speed
 				}
 				else if (yBallCoord == 0xFB) {
 					xBallDirect = -1;
@@ -537,10 +498,6 @@ int BallPaddleInteraction(int state) {
 				else if (yBallCoord == 0xF7) {
 					xBallDirect = -1;
 					yBallDirect = 0;
-					if ((speed < 3) && (hasLeft == 0)) {
-						speed += 1;
-						hasLeft = 1;
-					}
 				}
 				else if (yBallCoord == 0xEF) {
 					xBallDirect = -1;
@@ -557,28 +514,19 @@ int BallPaddleInteraction(int state) {
 			//-----------
 			// Left
 			//-----------
-			if ((yLeftPaddleCoordPrev != yLeftPaddleCoord) && (xBallCoord == 0x40) && (hasLeft == 0)) {
+			if ((yLeftPaddleCoordPrev != yLeftPaddleCoord) && (xLeftCoord == 0x40)) {
 				if ((yLeftPaddleCoord > yLeftPaddleCoordPrev) && ((yBallDirect == 1) || (yBallDirect == 0))) {
-					if (speed > 1) {
-						speed -= 1;
-					}
+					//increase speed
 				}
 				else if ((yLeftPaddleCoord > yLeftPaddleCoordPrev) && (yBallDirect == -1)) {
-					if (speed < 3) {
-						speed += 1;
-					}
+					//decrease speed
 				}
 				else if ((yLeftPaddleCoord < yLeftPaddleCoordPrev) && ((yBallDirect == -1) || (yBallDirect == 0))) {
-					if (speed > 1) {
-						speed -= 1;
-					}
+					//increase speed
 				}
 				else { // ((yLeftPaddleCoord < yLeftPaddleCoordPrev) && (yBallDirect == 1))
-					if (speed < 3) {
-						speed += 1;
-					}
+					//decrease speed
 				}
-				hasLeft = 1;
 			}
 			if ((yLeftPaddleCoord == 0xF8) && (xBallCoord == 0x40)) {
 				if (yBallCoord == 0xFE) {
@@ -588,10 +536,6 @@ int BallPaddleInteraction(int state) {
 				else if (yBallCoord == 0xFD) {
 					xBallDirect = 1;
 					yBallDirect = 0;
-					if ((speed < 3) && (hasLeft == 0)) {
-						speed += 1;
-						hasLeft = 1;
-					}
 				}
 				else if (yBallCoord == 0xFB) {
 					xBallDirect = 1;
@@ -599,26 +543,20 @@ int BallPaddleInteraction(int state) {
 						yBallDirect = -1;
 					}
 				}
-				else if ((yBallCoord == 0xF7) && (yBallDirect != 0)) {
+				else if (yBallCoord == 0xF7) {
 					xBallDirect = 1;
 					yBallDirect = -1;
-					if ((speed > 1) && (hasLeft == 0)) {
-						speed -= 1;
-						hasLeft = 1;
-					}
+					//increase speed
 				}
 				else {
 					winner = 1;
 				}
 			}
 			else if ((yLeftPaddleCoord == 0xF1) && (xBallCoord == 0x40)) {
-				if ((yBallCoord == 0xFE) && (yBallDirect != 0)) {
+				if (yBallCoord == 0xFE) {
 					xBallDirect = 1;
 					yBallDirect = 1;
-					if ((speed > 1) && (hasLeft == 0)) {
-						speed -= 1;
-						hasLeft = 1;
-					}
+					//increase speed
 				}
 				else if (yBallCoord == 0xFD) {
 					xBallDirect = 1;
@@ -629,10 +567,6 @@ int BallPaddleInteraction(int state) {
 				else if (yBallCoord == 0xFB) {
 					xBallDirect = 1;
 					yBallDirect = 0;
-					if ((speed < 3) && (hasLeft == 0)) {
-						speed += 1;
-						hasLeft = 1;
-					}
 				}
 				else if (yBallCoord == 0xF7) {
 					xBallDirect = 1;
@@ -640,26 +574,20 @@ int BallPaddleInteraction(int state) {
 						yBallDirect = -1;
 					}
 				}
-				else if ((yBallCoord == 0xEF) && (yBallDirect != 0)) {
+				else if (yBallCoord == 0xEF) {
 					xBallDirect = 1;
 					yBallDirect = -1;
-					if ((speed > 1) && (hasLeft == 0)) {
-						speed -= 1;
-						hasLeft = 1;
-					}
+					//increase speed
 				}
 				else {
 					winner = 1;
 				}
 			}
 			else if ((yLeftPaddleCoord == 0xE3) && (xBallCoord == 0x40)) {
-				if ((yBallCoord == 0xFD) && (yBallDirect != 0)) {
+				if (yBallCoord == 0xFD) {
 					xBallDirect = 1;
 					yBallDirect = 1;
-					if ((speed > 1) && (hasLeft == 0)) {
-						speed -= 1;
-						hasLeft = 1;
-					}
+					//increase speed
 				}
 				else if (yBallCoord == 0xFB) {
 					xBallDirect = 1;
@@ -670,10 +598,6 @@ int BallPaddleInteraction(int state) {
 				else if (yBallCoord == 0xF7) {
 					xBallDirect = 1;
 					yBallDirect = 0;
-					if ((speed < 3) && (hasLeft == 0)) {
-						speed += 1;
-						hasLeft = 1;
-					}
 				}
 				else if (yBallCoord == 0xEF) {
 					xBallDirect = 1;
@@ -686,17 +610,13 @@ int BallPaddleInteraction(int state) {
 			else {
 				//Do Nothing
 			}
-
-			yLeftPaddleCoordPrev = yLeftPaddleCoord;
-			yRightPaddleCoordPrev = yRightPaddleCoord;
 			state = paddle_check;
 			break;
 		default:
 			state = paddle_check;
 			winner = 0;
-			hasLeft = 0;
-			yLeftPaddleCoordPrev = 0xF1;
-			yRightPaddleCoordPrev = 0xF1;
+			yLeftPaddleCoordPrev = yLeftPaddleCoord;
+			yRightPaddleCoordPrev = yRightPaddleCoord;
 			break;
 	}
 	return state;
@@ -775,7 +695,7 @@ int main(void) {
 
 	const char start = -1;
 	task1.state = start;
-	task1.period = 75;
+	task1.period = 250;
 	task1.elapsedTime = task1.period;
 	task1.TickFct = &BallMovement;
 
