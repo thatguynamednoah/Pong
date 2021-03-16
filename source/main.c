@@ -12,6 +12,7 @@
 #include <avr/io.h>
 #include "timer.h"
 #include "scheduler.h"
+#include <stdlib.h>
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
 #endif
@@ -363,13 +364,81 @@ int RightPaddleMovement(int state) {
 // ----------------------------
 unsigned char xLeftPaddleCoord;
 unsigned char yLeftPaddleCoord;
+unsigned char aiEnable;
 
 enum LPM_States { check_l_paddle };
 int LeftPaddleMovement(int state) {
+	static unsigned char hasLeft;
+	int determineMovement;
         switch (state) {
                 case check_l_paddle:
 			if (aiEnable == 1) {
-				
+				if (xBallCoord == 0x10) {
+					hasLeft = 0;
+				}
+
+				if ((xBallCoord == 0x20) && (hasLeft == 0)) {
+					determineMovement = rand() % 10;
+					if (yBallDirect == -1) {
+						if ((determineMovement < 5) || (determineMovement == 7)) {
+							if (yLeftPaddleCoord != 0xE3) {
+								yLeftPaddleCoord = ShiftDown(yLeftPaddleCoord);
+							}
+						}
+						else if ((determineMovement == 6) || (determineMovement == 9)) {
+                                                        if (yLeftPaddleCoord != 0xF8) {
+                                                                yLeftPaddleCoord = ShiftUp(yLeftPaddleCoord);
+                                                        }
+                                                }
+                                                else {
+                                                        //Do Nothing
+						}
+					}
+					else if (yBallDirect == 1) {
+						if ((determineMovement < 5) || (determineMovement == 7)) {
+                                                        if (yLeftPaddleCoord != 0xF8) {
+                                                                yLeftPaddleCoord = ShiftUp(yLeftPaddleCoord);
+                                                        }
+                                                }
+						else if ((determineMovement == 6) || (determineMovement == 9)) {
+							if (yLeftPaddleCoord != 0xE3) {
+								yLeftPaddleCoord = ShiftDown(yLeftPaddleCoord);
+							}
+						}
+						else {
+							//Do Nothing
+						}
+					}
+					else {
+						if ((determineMovement < 5) || (determineMovement == 7)) {
+                                                        if (yLeftPaddleCoord == 0xF8) {
+                                                                yLeftPaddleCoord = ShiftDown(yLeftPaddleCoord);
+                                                        }
+							else if (yLeftPaddleCoord == 0xE3) {
+								yLeftPaddleCoord = ShiftUp(yLeftPaddleCoord);
+							}
+							else {
+								//Do Nothing
+							}
+                                                }
+						else if ((determineMovement == 6) || (determineMovement == 9)) {
+                                                        if (yBallDirect == 1) {
+								if (yLeftPaddleCoord != 0xE3) {
+									yLeftPaddleCoord = ShiftDown(yLeftPaddleCoord);
+								}
+							}
+							else {
+								if (yLeftPaddleCoord != 0xF8) {
+									yLeftPaddleCoord = ShiftUp(yLeftPaddleCoord);
+								}
+							}
+                                                }
+						else {
+							//Do Nothing
+						}
+					}
+					hasLeft = 1;
+				}
 			}
 			else {
 	                        if ((yLeftPaddleCoord != 0xF8) && ((~PINB & 0x07) == 0x02)) {
@@ -388,6 +457,8 @@ int LeftPaddleMovement(int state) {
                         state = check_l_paddle;
                         xLeftPaddleCoord = 0x80;
                         yLeftPaddleCoord = 0xF1;
+			hasLeft = 0;
+			aiEnable = 1;
                         break;
         }
         return state;
